@@ -7,7 +7,28 @@ import threading
 from queue import Queue 
 
 #import RPi.GPIO  as GPIO 
-#GPIO.setmode(GPIO.BCM)
+
+class GPIO:
+    BCM = 0 
+    OUT = 0 
+    IN = 0 
+    LOW = 0 
+    HIGH = 1 
+    def setmode(self,*arg,**kws):
+        pass 
+    def output(self,*arg,**kws):
+        pass 
+    def PWM(self,*arg,**kws):
+        class _PWM:
+            def ChangeDutyCycle(self,*arg,**kws):
+                pass 
+            def start(self,*arg,**kws):
+                pass 
+             
+        return _PWM() 
+
+
+GPIO.setmode(GPIO.BCM)
 
 A_EN_PIN = 16 
 A_INPUT1 = 20 
@@ -28,6 +49,42 @@ LEFT_LEVEL=0
 RIGHT_LEVEL=0 
 STEP = 2 
 MAX_LEVEL = 100
+
+
+
+class Motor:
+    def __init__(self,en_pin,pin1,pin2):
+        self.en_pin = en_pin
+        self.pin1 = pin1
+        self.pin2 = pin2 
+        GPIO.setup(en_pin, GPIO.OUT)
+        GPIO.setup(pin1, GPIO.OUT)
+        GPIO.setup(pin2, GPIO.OUT)
+        # 100HZ 
+        self.pwm = GPIO.PWM(en_pin, 100)
+        self.pwm.start(0)
+    
+    def fwd(self,speed):
+        """正转"""
+        GPIO.output(self.pin1,GPIO.HIGH)
+        GPIO.output(self.pin2,GPIO.LOW)
+        self.pwm.ChangeDutyCycle(speed)
+    def rev(self,speed):
+        """反转"""
+        GPIO.output(self.pin1,GPIO.LOW)
+        GPIO.output(self.pin2,GPIO.HIGH)
+        self.pwm.ChangeDutyCycle(speed)
+
+    def stop(self):
+        GPIO.output(self.pin1,GPIO.LOW)
+        GPIO.output(self.pin2,GPIO.LOW)
+
+    
+    
+
+
+
+    
 
 
 def hook_keyboard(e):
@@ -51,9 +108,9 @@ def show_info():
     while 1:
         elock.acquire()
         print(
-            "UP_LEVEL %d " % UP_LEVEL,
-            "DOWN_LEVEL %d " % DOWN_LEVEL,
-            "LEFT_LEVEL %d " % LEFT_LEVEL,
+            "UP_LEVEL    %d " % UP_LEVEL,
+            "DOWN_LEVEL  %d " % DOWN_LEVEL,
+            "LEFT_LEVEL  %d " % LEFT_LEVEL,
             "RIGHT_LEVEL %d " % RIGHT_LEVEL,
         )
         elock.release() 
@@ -66,7 +123,11 @@ def level_change(e):
     global RIGHT_LEVEL 
     elock.acquire()
     if e.name == "up" and UP_LEVEL < MAX_LEVEL:
-        UP_LEVEL += STEP
+        if UP_LEVEL > MAX_LEVEL/3:
+            UP_LEVEL += 2*STEP
+        else:
+            UP_LEVEL += STEP
+        UP_LEVEL = min(UP_LEVEL, MAX_LEVEL)
         DOWN_LEVEL=0
     if e.name == "down" and DOWN_LEVEL < MAX_LEVEL:
         DOWN_LEVEL += STEP
@@ -97,7 +158,7 @@ def auto_stop():
         if RIGHT_LEVEL>0:
             RIGHT_LEVEL-= STEP
         elock.release() 
-        time.sleep(0.05)
+        time.sleep(0.06)
 
 
 threading.Thread(target=auto_stop,daemon=True).start()
